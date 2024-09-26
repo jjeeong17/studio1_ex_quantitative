@@ -90,6 +90,18 @@ svg
   .attr('height', height)
   .attr('fill', 'url(#blue-gradient)');
 
+// 툴팁 요소 생성
+const tooltip = d3
+  .select('body')
+  .append('div')
+  .attr('class', 'tooltip')
+  .style('position', 'absolute')
+  .style('background-color', 'white')
+  .style('border', '1px solid #ccc')
+  .style('padding', '10px')
+  .style('border-radius', '5px')
+  .style('box-shadow', '0px 0px 10px rgba(0,0,0,0.1)')
+  .style('display', 'none'); // 초기에는 보이지 않도록 설정
 // Add the title text
 svg
   .append('text')
@@ -115,11 +127,11 @@ depthSections.forEach((section) => {
 
 // Array of color, label, and position information for each group
 const groups = [
-  { label: 'Top Predators', color: '#e57373', x: 1160 },
-  { label: 'Midwater Feeders', color: '#ffa726', x: 1310 },
-  { label: 'Seafloor Hunters', color: '#81c784', x: 1460 },
-  { label: 'Plant Eaters', color: '#fff176', x: 1640 },
-  { label: 'Miscellaneous', color: '#ba68c8', x: 1790 },
+  { label: 'Top Predators', color: '#e57373', x: 1220 },
+  { label: 'Midwater Feeders', color: '#ffa726', x: 1360 },
+  { label: 'Seafloor Hunters', color: '#81c784', x: 1510 },
+  { label: 'Plant Eaters', color: '#fff176', x: 1650 },
+  { label: 'Miscellaneous', color: '#ba68c8', x: 1780 },
 ];
 
 // Add a group to contain the labels
@@ -128,9 +140,9 @@ const legendGroup = svg.append('g').attr('transform', 'translate(0, 60)');
 // Add the 'Group by' text
 legendGroup
   .append('text')
-  .attr('x', 960)
-  .attr('y', 18)
-  .attr('font-size', '22px')
+  .attr('x', 1040)
+  .attr('y', 20)
+  .attr('font-size', '20px')
   .attr('fill', '#000')
   .style('font-family', 'Comfortaa')
   .text('Group by');
@@ -146,9 +158,46 @@ groups.forEach((group) => {
     .attr('fill', group.color)
     .style('cursor', 'pointer')
     .on('click', function () {
-      // Handle the click event: Show only the data for the clicked group
+      // 클릭 이벤트에서 filterDataByGroup 함수를 호출합니다.
       filterDataByGroup(group.label);
     });
+
+  // 현재 선택된 그룹을 저장할 변수
+  let currentGroup = null;
+
+  // Function to display data only for the clicked group
+  function filterDataByGroup(groupName) {
+    console.log(`Filtering data for group: ${groupName}`);
+
+    // 클릭된 그룹이 이미 선택된 그룹인지 확인하여 토글 기능 구현
+    if (currentGroup === groupName) {
+      // 이미 선택된 그룹을 다시 클릭한 경우, 필터 해제 (모든 원 보이기)
+      currentGroup = null;
+      svg
+        .selectAll('.fish-dot')
+        .transition()
+        .duration(500)
+        .style('opacity', 0.7)
+        .style('display', 'block') // 모든 원 보이기
+        .style('pointer-events', 'auto'); // 원 클릭 가능하도록 설정
+    } else {
+      // 새로운 그룹 선택
+      currentGroup = groupName;
+      svg
+        .selectAll('.fish-dot')
+        .transition()
+        .duration(500)
+        .style('opacity', function (d) {
+          return d.mappedGroup === groupName ? 0.7 : 0;
+        })
+        .style('display', function (d) {
+          return d.mappedGroup === groupName ? 'block' : 'none';
+        })
+        .style('pointer-events', function (d) {
+          return d.mappedGroup === groupName ? 'auto' : 'none';
+        });
+    }
+  }
 
   // Add the label
   legendGroup
@@ -221,6 +270,10 @@ d3.json('final_data.json').then(function (data) {
   data.forEach(function (d) {
     d.cleanDepth = +d.cleanDepth || 0; // 깊이 값을 숫자로 변환
     d.mappedGroup = mapGroupLabel(d.ecological_group);
+    d.name = d.name || 'Unknown';
+    d.tax_order = d.tax_order || 'Unknown';
+    d.tax_class = d.tax_class || 'Unknown';
+    d.link = d.link || '#';
   });
 
   // Plot the dots
@@ -242,17 +295,25 @@ d3.json('final_data.json').then(function (data) {
       return colorScale(d.mappedGroup);
     })
     .attr('opacity', 0.7)
-    .on('mouseover', function (event, d) {
-      // Optionally add tooltip functionality here
+    .style('display', 'block') // 초기에는 모든 원을 보이도록 설정
+    .on('click', function (event, d) {
+      // 이벤트 전파 중지
+      event.stopPropagation();
+
+      // 툴팁 내용 설정
+      tooltip
+        .html(
+          `
+      <strong>Name:</strong> ${d.name}<br>
+      <strong>Order:</strong> ${d.tax_order}<br>
+      <strong>Class:</strong> ${d.tax_class}<br>
+      <strong>Depth:</strong> ${d.cleanDepth} m<br>
+      <a href="${d.link}" target="_blank">More Information</a>
+      `
+        )
+
+        .style('left', event.pageX + 10 + 'px') // 마우스 위치에 따라 툴팁 위치 설정
+        .style('top', event.pageY + 10 + 'px')
+        .style('display', 'block'); // 툴팁 보이기
     });
 });
-
-// Add the "5393m" label at the bottom
-svg
-  .append('text')
-  .attr('x', 10) // X 좌표는 필요에 따라 조정하세요
-  .attr('y', 6140) // y 좌표는 depthSections의 마지막 yEnd 값에 맞춤
-  .attr('fill', '#ed8645') // 텍스트 색상
-  .attr('font-size', '16px') // 텍스트 크기
-  .style('font-family', 'Comfortaa')
-  .text('5393m'); // 표시할 텍스트
