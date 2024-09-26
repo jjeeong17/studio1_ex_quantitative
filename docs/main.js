@@ -27,6 +27,13 @@ const depthSections = [
     yStart: 5600,
     yEnd: 6140,
   },
+  {
+    label: '5393m',
+    depthStart: 5393,
+    depthEnd: 5393,
+    yStart: 6140,
+    yEnd: height,
+  },
 ];
 
 // Define the gradient
@@ -120,8 +127,9 @@ depthSections.forEach((section) => {
     .attr('x', 10)
     .attr('y', section.yStart)
     .attr('fill', '#ed8645')
-    .attr('font-size', '16px')
+    .attr('font-size', '18px')
     .style('font-family', 'Comfortaa')
+    .attr('font-weight', 'bold')
     .text(section.label);
 });
 
